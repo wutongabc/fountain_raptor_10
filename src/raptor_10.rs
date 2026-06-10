@@ -17,7 +17,7 @@
 /// - Supports systematic encoding
 
 use fountain_engine::traits::{CodeScheme, LDPC, HDPC};
-use fountain_engine::types::{CodeParams, CodeType, DecodingConfig};
+use fountain_engine::types::{CodeParams, CodeType, DecodingConfig, SubstitutionMethod};
 use fountain_scheme::precodes::hdpc_binary::R10HDPC;
 use fountain_scheme::precodes::ldpc::R10LDPC;
 use crate::generator::rfc5053_degree_set::RFC5053DegreeSet;
@@ -239,7 +239,11 @@ impl CodeScheme for Raptor10SysCode {
     }
 
     fn decoding_config(&self) -> DecodingConfig {
-        DecodingConfig::default().with_max_inact_num(self.dynamic_inactivation_budget())
+        let mut config = DecodingConfig::default();
+        if self.params.k > 500 {
+            config.subs_method = SubstitutionMethod::Original;
+        }
+        config.with_max_inact_num(self.dynamic_inactivation_budget())
     }
 }
 

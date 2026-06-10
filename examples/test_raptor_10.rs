@@ -38,7 +38,7 @@ fn test_single_k(k: usize) -> bool {
             encode_data_operater.insert_vector(vector, i);
         }
         
-        let mut encoder = Encoder::new_with_operator(config.clone(), Box::new(encode_data_operater));
+        let mut encoder = Encoder::new_with_operator(&config, Box::new(encode_data_operater));
         let mut coded_id_to_data_id = std::collections::HashMap::new();
         
         // Encode systematic symbols (0..k_prime)
@@ -71,7 +71,7 @@ fn test_single_k(k: usize) -> bool {
     };
     
     // Now test decoding
-    let mut decoder = Decoder::new_with_operator(config, Box::new(VecDataOperater::new(symbol_size)));
+    let mut decoder = Decoder::new_with_operator(&config, Box::new(VecDataOperater::new(symbol_size)));
     
     // Try decoding with source symbols
     let mut decoded = false;

@@ -1,10 +1,10 @@
 //! Test Raptor-10 systematic encode/decode over a K range with a fixed worker pool.
 //!
 //! Run with:
-//! `cargo run -p fountain_raptor_10 --release --example test_raptor_10_multi_threads`
+//! `cargo run -p raptor_10 --release --example test_raptor_10_multi_threads`
 //!
 //! Optional quick smoke test:
-//! `cargo run -p fountain_raptor_10 --release --example test_raptor_10_multi_threads -- 4 20 2`
+//! `cargo run -p raptor_10 --release --example test_raptor_10_multi_threads -- 4 20 2`
 
 use fountain_engine::*;
 use fountain_raptor_10::Raptor10SysCode;
@@ -60,7 +60,7 @@ fn test_single_k(k: usize) -> bool {
         encode_operator.insert_vector(vector, i);
     }
 
-    let mut encoder = Encoder::new_with_operator(config.clone(), Box::new(encode_operator));
+    let mut encoder = Encoder::new_with_operator(&config, Box::new(encode_operator));
     let mut coded_id_to_data_id = HashMap::new();
 
     for coded_id in 0..k_prime {
@@ -79,7 +79,7 @@ fn test_single_k(k: usize) -> bool {
 
     let encoder_operator = encoder.manager.move_operator();
     let mut decoder =
-        Decoder::new_with_operator(config, Box::new(VecDataOperater::new(symbol_size)));
+        Decoder::new_with_operator(&config, Box::new(VecDataOperater::new(symbol_size)));
 
     let mut decoded = false;
     for coded_id in 0..k_prime {
