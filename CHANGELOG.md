@@ -12,5 +12,4 @@ All notable changes to the published `fountain_raptor_10` crate are documented h
 ### Packaging
 
 - Crates.io tarball includes RFC 5053 **examples** (`test_raptor_10`, generator demos, `raptor_10_performance`).
-- `raptor_10_performance` uses optional dev-dependency [`fountain_operators`](https://github.com/shhyang/fountain_operators) (Git) for Slab/SIMD operator benchmarks.
-
+- `raptor_10_performance` includes portable real-symbol benchmarks using `VecDataOperater`.

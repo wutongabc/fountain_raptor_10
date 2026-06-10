@@ -12,8 +12,7 @@
 //! ## Real-symbol benchmark
 //!
 //! After the abstract harness, reports systematic-codec encode/decode wall times with
-//! [`VecDataOperater`](fountain_utility::VecDataOperater), [`SlabDataOperator`], and
-//! [`SimdDataOperator`](fountain_operators::SimdDataOperator)
+//! [`VecDataOperater`](fountain_utility::VecDataOperater)
 //! at symbol sizes 128 and 1500 @ k = 5000 for **on-the-fly** and **deferred** execution
 //! ([`fountain_utility::real_symbol_benchmark`](fountain_utility::real_symbol_benchmark)).
 //! Table footnotes explain that on-the-fly `enc` is LT-only; see
@@ -26,14 +25,13 @@
 //! ```
 
 use fountain_engine::types::GF2_FIELD_POLY;
-use fountain_operators::{SlabDataOperator, SimdDataOperator};
-use fountain_utility::{
-    benchmark_deferred, benchmark_on_the_fly, make_test_messages, print_real_symbol_benchmark_table,
-    save_test_results, test_code_scheme_multiple, test_code_scheme_with_data_vectors,
-    OperatorFactory, RealSymbolBenchConfig, StandardRealSymbolSession, TestResult, TestStatistics,
-    VecDataOperater,
-};
 use fountain_raptor_10::Raptor10SysCode;
+use fountain_utility::{
+    OperatorFactory, RealSymbolBenchConfig, StandardRealSymbolSession, TestResult, TestStatistics,
+    VecDataOperater, benchmark_deferred, benchmark_on_the_fly, make_test_messages,
+    print_real_symbol_benchmark_table, save_test_results, test_code_scheme_multiple,
+    test_code_scheme_with_data_vectors,
+};
 use std::fs::File;
 use std::io::Write;
 use std::panic::{self, AssertUnwindSafe};
@@ -65,7 +63,8 @@ impl ExperimentStats {
     fn from_results(k: usize, results: &[TestResult]) -> Self {
         let (_, _, success_rate) = TestStatistics::success_rate(results);
         let overhead_stats = TestStatistics::overhead_stats(k, results);
-        let (prec_avg, encoding_avg, decoding_avg) = TestStatistics::avg_computation_costs(k, results);
+        let (prec_avg, encoding_avg, decoding_avg) =
+            TestStatistics::avg_computation_costs(k, results);
         let time_stats = TestStatistics::avg_time_costs(results);
 
         Self {
@@ -97,14 +96,6 @@ fn vec_operator_factory(symbol_size: usize) -> Box<dyn fountain_engine::DataOper
     Box::new(VecDataOperater::new(symbol_size))
 }
 
-fn slab_operator_factory(symbol_size: usize) -> Box<dyn fountain_engine::DataOperator> {
-    Box::new(SlabDataOperator::new(symbol_size))
-}
-
-fn simd_operator_factory(symbol_size: usize) -> Box<dyn fountain_engine::DataOperator> {
-    Box::new(SimdDataOperator::new(symbol_size))
-}
-
 fn print_real_symbol_benchmarks() {
     let num_coded = num_coded_vectors(REAL_SYMBOL_K);
     let code = Raptor10SysCode::new_with_default_setting(REAL_SYMBOL_K);
@@ -119,11 +110,7 @@ fn print_real_symbol_benchmarks() {
         &format!("Real-symbol benchmark (k={REAL_SYMBOL_K}, systematic codec)"),
         REAL_SYMBOL_RUNS,
         REAL_SYMBOL_SIZES,
-        &[
-            ("VecDataOperater", vec_operator_factory as OperatorFactory),
-            ("SlabDataOperator", slab_operator_factory as OperatorFactory),
-            ("SimdDataOperator", simd_operator_factory as OperatorFactory),
-        ],
+        &[("VecDataOperater", vec_operator_factory as OperatorFactory)],
         &|symbol_size, factory| {
             let config = bench_config(symbol_size);
             let messages = make_test_messages(REAL_SYMBOL_K, symbol_size);
@@ -179,7 +166,9 @@ fn main() -> std::io::Result<()> {
     );
 
     println!("=== Raptor10 (RFC 5053) Performance ===");
-    println!("Runs per K: {NUM_RUNS}, coded vectors: k * {OVERHEAD_NUMERATOR}/{OVERHEAD_DENOMINATOR}");
+    println!(
+        "Runs per K: {NUM_RUNS}, coded vectors: k * {OVERHEAD_NUMERATOR}/{OVERHEAD_DENOMINATOR}"
+    );
     println!("Test all K in [{K_MIN}, {K_MAX}]: {TEST_ALL_K}");
     println!("\n{header}");
     println!("{}", "-".repeat(110));
@@ -190,9 +179,8 @@ fn main() -> std::io::Result<()> {
     for &k in &ks {
         let num_coded = num_coded_vectors(k);
 
-        let verify = panic::catch_unwind(AssertUnwindSafe(|| {
-            verify_with_data_operator(k, num_coded)
-        }));
+        let verify =
+            panic::catch_unwind(AssertUnwindSafe(|| verify_with_data_operator(k, num_coded)));
         match verify {
             Ok(Ok(())) => {}
             Ok(Err(msg)) => {
@@ -233,7 +221,8 @@ fn main() -> std::io::Result<()> {
                     stats.avg_precoding_time_us,
                     stats.avg_encoding_time_us,
                     stats.avg_decoding_time_us,
-                    stats.encoding_operation_stats.vector_add + stats.precoding_operation_stats.vector_add,
+                    stats.encoding_operation_stats.vector_add
+                        + stats.precoding_operation_stats.vector_add,
                     stats.decoding_operation_stats.vector_add,
                 );
             }

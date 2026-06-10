@@ -30,9 +30,6 @@ fountain_scheme = "1.3.0"
 fountain_utility = "1.3.0"
 rand = "0.8.5"
 
-[dev-dependencies]
-fountain_operators = { git = "https://github.com/shhyang/fountain_operators", features = ["simd"] }
-
 [[example]]
 name = "test_raptor_10"
 path = "examples/test_raptor_10.rs"

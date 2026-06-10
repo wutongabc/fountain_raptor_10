@@ -1,10 +1,10 @@
 //! Test Raptor-10 systematic encode/decode over a K range with a fixed worker pool.
 //!
 //! Run with:
-//! `cargo run -p raptor_10 --release --example test_raptor_10_multi_threads`
+//! `cargo run -p fountain_raptor_10 --release --example test_raptor_10_multi_threads`
 //!
 //! Optional quick smoke test:
-//! `cargo run -p raptor_10 --release --example test_raptor_10_multi_threads -- 4 20 2`
+//! `cargo run -p fountain_raptor_10 --release --example test_raptor_10_multi_threads -- 4 20 2`
 
 use fountain_engine::*;
 use fountain_raptor_10::Raptor10SysCode;
