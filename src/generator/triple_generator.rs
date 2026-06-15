@@ -3,96 +3,7 @@
 
 use super::degree_generator::deg;
 use super::random_generator::rand;
-
-/// Calculate the smallest positive integer X such that X*(X-1) >= 2*K
-/// not the index X, but the value X
-fn calculate_x_val(k: u32) -> u32 {
-    let mut x = 1;
-    while x * (x - 1) < 2 * k {
-        x += 1;
-    }
-    x
-}
-
-/// Check if a number is prime
-fn is_prime(n: u32) -> bool {
-    if n < 2 {
-        return false;
-    }
-    if n == 2 {
-        return true;
-    }
-    if n % 2 == 0 {
-        return false;
-    }
-    
-    let sqrt_n = (n as f64).sqrt() as u32;
-    for i in (3..=sqrt_n).step_by(2) {
-        if n % i == 0 {
-            return false;
-        }
-    }
-    true
-}
-
-/// Find the smallest prime >= n
-fn next_prime(n: u32) -> u32 {
-    let mut candidate = n;
-    while !is_prime(candidate) {
-        candidate += 1;
-    }
-    candidate
-}
-
-/// Calculate binomial coefficient C(n, k) = n! / (k! * (n-k)!)
-fn binomial(n: u32, k: u32) -> u64 {
-    if k > n {
-        return 0;
-    }
-    if k == 0 || k == n {
-        return 1;
-    }
-    
-    let k = k.min(n - k); // Take advantage of symmetry
-    let mut result: u64 = 1;
-    
-    for i in 0..k {
-        result = result * (n - i) as u64 / (i + 1) as u64;
-    }
-    
-    result
-}
-
-/// Calculate the smallest prime S such that S >= ceil(0.01*K) + X
-fn calculate_s(k: u32, x: u32) -> u32 {
-    let threshold = ((k as f64 * 0.01).ceil() as u32) + x;
-    next_prime(threshold)
-}
-
-/// Calculate the smallest H such that C(H, ceil(H/2)) >= K + S
-fn calculate_h(k: u32, s: u32) -> u32 {
-    let target = k + s;
-    let mut h = 1;
-    
-    loop {
-        let h_half = (h as f64 / 2.0).ceil() as u32;
-        if binomial(h, h_half) >= target as u64 {
-            break;
-        }
-        h += 1;
-    }
-    
-    h
-}
-
-/// Calculate L = K + S + H
-fn calculate_l(k: u32) -> u32 {
-    let x_val = calculate_x_val(k);
-    let s = calculate_s(k, x_val);
-    let h = calculate_h(k, s);
-    // println!("S, H, L are {}, {}, {}", s, h, k + s + h);
-    return k + s + h;
-}
+use super::math_util::*;
 
 /// Systematic index J(K)
 /// This is a placeholder - actual implementation depends on Section 5.7
@@ -700,7 +611,7 @@ fn systematic_index(k: u32) -> u32 {
 /// Triple generator Trip[K, X]
 /// Returns a triple (d, a, b) for encoding symbol generation
 pub fn generate_triple(k: u32, x: u32) -> (u32, u32, u32) {
-    const Q: u32 = 65521; // Largest prime smaller than 2^16
+    // const Q: u32 = 65521; // Largest prime smaller than 2^16
     
     // Calculate x_adjusted based on whether x is a repair symbol or source symbol
     // ESI 0 to K-1 are source symbols, ESI K onwards are repair symbols
@@ -728,13 +639,44 @@ pub fn generate_triple(k: u32, x: u32) -> (u32, u32, u32) {
     // Calculate L' (smallest prime >= L)
     let l_prime = next_prime(l);
     
+    let (d, a, b) = generate_triple_inner(k, x_adjusted, l_prime);
+    (d, a, b)
+}
+
+pub fn generate_triple_with_params(k: u32, x: u32, s: u32, l: u32, l_prime: u32) -> (u32, u32, u32) {
+    // const Q: u32 = 65521; // Largest prime smaller than 2^16
+    let h: u32 = l - k - s;
+
+    // Calculate x_adjusted based on whether x is a repair symbol or source symbol
+    // ESI 0 to K-1 are source symbols, ESI K onwards are repair symbols
+    let x_adjusted = if x >= k {
+        // Adjust x by subtracting h and s (LDPC/HDPC symbols)
+
+        // Check if x is in the valid repair symbol range
+        if x < k + s + h {
+            panic!("Invalid encoding symbol ID: x={} is in the gap [k, k+s+h). Valid ranges: [0, k) for source symbols, or [k+s+h, ...) for repair symbols. (k={}, s={}, h={})", 
+                   x, k, s, h);
+        }
+        
+        x.saturating_sub(s + h)  // Return the adjusted value
+    } else {
+        x  // For source symbols (0 to k-1), use x directly
+    };
+    
+    let (d, a, b) = generate_triple_inner(k, x_adjusted, l_prime);
+    (d, a, b)
+}
+
+pub fn generate_triple_inner(k: u32, x: u32, l_prime: u32) -> (u32, u32, u32) {
+    const Q: u32 = 65521; // Largest prime smaller than 2^16
+    
     // Get systematic index
     let j_k = systematic_index(k);
     
-    // Calculate A, B, Y (use x_adjusted instead of original x)
+    // Calculate A, B, Y (use x directly)
     let a_val = (53591 + j_k * 997) % Q;
     let b_val = (10267 * (j_k + 1)) % Q;
-    let y = (b_val + x_adjusted * a_val) % Q;
+    let y = (b_val + x * a_val) % Q;
     // dbg!("a_val", a_val, "b_val", b_val, "y", y);
 
     // Generate triple components
@@ -745,7 +687,7 @@ pub fn generate_triple(k: u32, x: u32) -> (u32, u32, u32) {
     let a = 1 + rand(y, 1, l_prime - 1);
     let b = rand(y, 2, l_prime);
     
-    // println!("When K={}, X={}, x_adjusted={} , the triple is (d={}, a={}, b={})", k, x, x_adjusted, d, a, b);
+    // println!("When K={}, X={}, the triple is (d={}, a={}, b={})", k, x, d, a, b);
     (d, a, b)
 }
 

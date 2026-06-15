@@ -21,6 +21,7 @@ use fountain_engine::types::{CodeParams, CodeType, DecodingConfig, SubstitutionM
 use fountain_scheme::precodes::hdpc_binary::R10HDPC;
 use fountain_scheme::precodes::ldpc::R10LDPC;
 use crate::generator::rfc5053_degree_set::RFC5053DegreeSet;
+use crate::generator::math_util::*;
 
 /// Raptor10 Systematic Code (RFC 5053)
 /// 
@@ -118,86 +119,6 @@ impl Raptor10SysCode {
     }
 }
 
-/// Calculate X value for RFC 5053: smallest X where X*(X-1) >= 2*K
-fn calculate_x_val(k: u32) -> u32 {
-    let mut x = 1;
-    while x * (x - 1) < 2 * k {
-        x += 1;
-    }
-    x
-}
-
-/// Calculate S for RFC 5053: smallest prime >= ceil(0.01*K) + X
-fn calculate_s(k: u32, x: u32) -> u32 {
-    let threshold = ((k as f64 * 0.01).ceil() as u32) + x;
-    next_prime(threshold)
-}
-
-/// Calculate H for RFC 5053: smallest H where C(H, ceil(H/2)) >= K + S
-fn calculate_h(k: u32, s: u32) -> u32 {
-    let target = k + s;
-    let mut h = 1;
-    
-    loop {
-        let h_half = (h as f64 / 2.0).ceil() as u32;
-        if binomial(h, h_half) >= target as u64 {
-            break;
-        }
-        h += 1;
-    }
-    
-    h
-}
-
-/// Find the smallest prime number >= n
-fn next_prime(n: u32) -> u32 {
-    let mut candidate = n;
-    while !is_prime(candidate) {
-        candidate += 1;
-    }
-    candidate
-}
-
-/// Check if a number is prime
-fn is_prime(n: u32) -> bool {
-    if n < 2 {
-        return false;
-    }
-    if n == 2 {
-        return true;
-    }
-    if n % 2 == 0 {
-        return false;
-    }
-    
-    let sqrt_n = (n as f64).sqrt() as u32;
-    for i in (3..=sqrt_n).step_by(2) {
-        if n % i == 0 {
-            return false;
-        }
-    }
-    true
-}
-
-/// Calculate binomial coefficient C(n, k) = n! / (k! * (n-k)!)
-fn binomial(n: u32, k: u32) -> u64 {
-    if k > n {
-        return 0;
-    }
-    if k == 0 || k == n {
-        return 1;
-    }
-    
-    let k = k.min(n - k); // Take advantage of symmetry
-    let mut result: u64 = 1;
-    
-    for i in 0..k {
-        result = result * (n - i) as u64 / (i + 1) as u64;
-    }
-    
-    result
-}
-
 impl CodeScheme for Raptor10SysCode {
     /// Get the code parameters
     fn get_params(&self) -> CodeParams {
@@ -216,7 +137,8 @@ impl CodeScheme for Raptor10SysCode {
     /// to be XORed together for each encoding symbol.
     fn create_degree_set_fn(&self) -> Box<dyn FnMut(usize) -> Vec<usize>> {
         // Use RFC 5053 degree set
-        let mut degree_set = RFC5053DegreeSet::new(self.k);
+        // let mut degree_set = RFC5053DegreeSet::new(self.k);
+        let mut degree_set = RFC5053DegreeSet::new_with_params(self.k, self.params.l, self.params.h);
         let threshold = self.params.num_active();
         Box::new(move |coded_id| {
             let (mut active_indices, inactive_indices) = degree_set.degree_set(coded_id);

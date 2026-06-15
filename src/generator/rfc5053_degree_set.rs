@@ -47,7 +47,8 @@
 /// ```
 
 
-use super::triple_generator::generate_triple;
+use super::triple_generator::{generate_triple_with_params};
+use super::math_util::*;
 
 /// RFC 5053 compliant LT degree set generator
 ///
@@ -91,9 +92,16 @@ impl RFC5053DegreeSet {
     /// - Calculate H: smallest H where C(H, ceil(H/2)) >= K + S
     /// - L = K + S + H
     pub fn new(k: usize) -> Self {
-        let s = calculate_s(k as u32) as usize;
+        let x = calculate_x_val(k as u32) as usize;
+        let s = calculate_s(k as u32, x as u32) as usize;
         let h = calculate_h(k as u32, s as u32) as usize;
-        let l = calculate_l(k as u32, s as u32, h as u32) as usize;
+        let l = calculate_l_with_params(k as u32, s as u32, h as u32) as usize;
+        let l_prime = next_prime(l as u32) as usize;
+        Self { k, s, l, l_prime }
+    }
+
+    pub fn new_with_params(k: usize, s: usize, h: usize) -> Self {
+        let l = calculate_l_with_params(k as u32, s as u32, h as u32) as usize;
         let l_prime = next_prime(l as u32) as usize;
         Self { k, s, l, l_prime }
     }
@@ -124,7 +132,9 @@ impl RFC5053DegreeSet {
     /// Tuple of (active_indices, inactive_indices)
     pub fn generate_indices(&self, coded_id: usize) -> (Vec<usize>, Vec<usize>) {
         // Step 1: Get triple from RFC 5053 Triple Generator
-        let (d, a, b) = generate_triple(self.k as u32, coded_id as u32);
+        // let (d, a, b) = generate_triple(self.k as u32, coded_id as u32);
+        let (d, a, b) = generate_triple_with_params(self.k as u32, coded_id as u32, 
+            self.s as u32, self.l as u32, self.l_prime as u32);
         // dbg!("the triple is", d, a, b);
         
         // check if a is an integer between 1 and l_prime - 1
@@ -237,132 +247,6 @@ impl RFC5053DegreeSet {
     }
 }
 
-/// Calculate L from K as per RFC 5053 Section 5.4.2.3
-///
-/// # Algorithm
-///
-/// 1. Calculate X: smallest integer where X*(X-1) >= 2*K
-/// 2. Calculate S: smallest prime >= ceil(0.01*K) + X
-/// 3. Calculate H: smallest H where C(H, ceil(H/2)) >= K + S
-/// 4. L = K + S + H
-///
-/// # Note
-///
-/// This uses the helper functions from triple_generator module
-fn calculate_s(k: u32) -> u32 {
-    
-    // These are the same functions used in triple_generator
-    // We could import them from triple_generator if they were public
-    // For now, we use the existing calculate_l from triple_generator
-    
-    // Calculate X: smallest X where X*(X-1) >= 2*K
-    let mut x = 1;
-    while x * (x - 1) < 2 * k {
-        x += 1;
-    }
-    
-    // Calculate S: smallest prime >= ceil(0.01*K) + X
-    let s_threshold = ((k as f64 * 0.01).ceil() as u32) + x;
-    let s = next_prime(s_threshold);
-    
-    s
-}
-
-/// H: the smallest integer such that choose(H, ceil(H/2)) >= K + S
-fn calculate_h(k: u32, s: u32) -> u32 {
-    let target = k + s;
-    let mut h = 1;
-    loop {
-        let h_half = (h + 1) / 2; // equivalent to ceil(h/2) for integers
-        if binomial(h, h_half) >= target as u64 {
-            return h;
-        }
-        h += 1;
-    }
-}
-
-fn calculate_l(k: u32, s: u32, h: u32) -> u32 {
-    k + s + h
-}
-
-/// Find the smallest prime number >= n
-///
-/// Uses trial division to check primality.
-///
-/// # Arguments
-///
-/// * `n` - Lower bound
-///
-/// # Returns
-///
-/// The smallest prime >= n
-fn next_prime(n: u32) -> u32 {
-    let mut candidate = n;
-    while !is_prime(candidate) {
-        candidate += 1;
-    }
-    candidate
-}
-
-/// Check if a number is prime
-///
-/// Uses trial division up to sqrt(n)
-///
-/// # Arguments
-///
-/// * `n` - Number to check
-///
-/// # Returns
-///
-/// true if n is prime, false otherwise
-fn is_prime(n: u32) -> bool {
-    if n < 2 {
-        return false;
-    }
-    if n == 2 {
-        return true;
-    }
-    if n % 2 == 0 {
-        return false;
-    }
-    
-    let sqrt_n = (n as f64).sqrt() as u32;
-    for i in (3..=sqrt_n).step_by(2) {
-        if n % i == 0 {
-            return false;
-        }
-    }
-    true
-}
-
-/// Calculate binomial coefficient C(n, k) = n! / (k! * (n-k)!)
-///
-/// # Arguments
-///
-/// * `n` - Upper value
-/// * `k` - Lower value
-///
-/// # Returns
-///
-/// Binomial coefficient C(n, k)
-fn binomial(n: u32, k: u32) -> u64 {
-    if k > n {
-        return 0;
-    }
-    if k == 0 || k == n {
-        return 1;
-    }
-    
-    let k = k.min(n - k); // Take advantage of symmetry
-    let mut result: u64 = 1;
-    
-    for i in 0..k {
-        result = result * (n - i) as u64 / (i + 1) as u64;
-    }
-    
-    result
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -473,9 +357,10 @@ mod tests {
         ];
         
         for (k, expected_min_l) in test_cases {
-            let s = calculate_s(k);
+            let x = calculate_x_val(k);
+            let s = calculate_s(k, x);
             let h = calculate_h(k, s);
-            let l = calculate_l(k, s, h);
+            let l = calculate_l_with_params(k, s, h);
             assert!(l >= k, "L should be >= K");
             assert!(l >= expected_min_l, 
                    "L={} should be >= expected minimum {} for K={}", 
