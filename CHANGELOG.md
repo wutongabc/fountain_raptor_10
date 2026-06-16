@@ -2,6 +2,13 @@
 
 All notable changes to the published `fountain_raptor_10` crate are documented here.
 
+## [1.2.1] - 2026-06-16
+
+### Changed
+
+- Refactored shared RFC 5053 math helpers into `generator::math_util`.
+- Reused precomputed Raptor-10 parameters in degree/triple generation to avoid duplicate calculations.
+
 ## [1.2.0] - 2026-06-08
 
 ### Changed
